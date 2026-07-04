@@ -19,7 +19,8 @@
     "test-openai": "node ./src/openai/__test__.js",
     "test-xunfei": "node ./src/xunfei/__test__.js",
     "test-kimi": "node ./src/kimi/__test__.js",
-    "test-dify": "node ./src/dify/__test__.js"
+    "test-dify": "node ./src/dify/__test__.js",
+    "postinstall": "patch-package"
   },
   "lint-staged": {
     "*.{js,ts,md}": [
@@ -56,6 +57,7 @@
     "inquirer": "^9.2.16",
     "openai": "^4.52.0",
     "p-timeout": "^6.0.0",
+    "patch-package": "^8.0.1",
     "qrcode-terminal": "^0.12.0",
     "remark": "^14.0.2",
     "strip-markdown": "^5.0.0",

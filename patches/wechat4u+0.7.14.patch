@@ -1,0 +1,16 @@
+diff --git a/node_modules/wechat4u/lib/core.js b/node_modules/wechat4u/lib/core.js
+index 9d55761..ee9817c 100644
+--- a/node_modules/wechat4u/lib/core.js
++++ b/node_modules/wechat4u/lib/core.js
+@@ -136,7 +136,10 @@ var WechatCore = function () {
+           // eslint-disable-next-line
+           eval(res.data);
+ 
+-          _util.assert.notEqual(window.code, 400, res);
++          if (window.code === 400) {
++            console.log('WeChat returned 400, retrying...');
++            throw new Error('WeChat login returned 400, will retry');
++          }
+ 
+           if (window.code === 200) {
+             _this3.CONF = (0, _util.getCONF)(window.redirect_uri.match(/(?:\w+\.)+\w+/)[0]);
