@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node ./cli.js",
     "format": "prettier --write ./src",
-    "start": "node ./cli.js",
+    "start": "node ./cli.js start --serve deepseek-free",
     "test": "node ./src/wechaty/testMessage.js",
     "test:analysis": "node ./src/analysis/__test__.js",
     "lark:login": "node ./cli.js lark login",
