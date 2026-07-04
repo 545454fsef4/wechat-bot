@@ -5,9 +5,9 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node ./cli.js start --serve deepseek-free",
+    "dev": "node ./cli.js --serve deepseek-free",
     "format": "prettier --write ./src",
-    "start": "node ./cli.js start --serve deepseek-free",
+    "start": "node ./cli.js --serve deepseek-free",
     "test": "node ./src/wechaty/testMessage.js",
     "test:analysis": "node ./src/analysis/__test__.js",
     "lark:login": "node ./cli.js lark login",
