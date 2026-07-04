@@ -1,11 +1,13 @@
-// Railway entry - starts bot directly, no CLI needed
+// Railway entry - imports bot directly, no CLI/Commander
+// All config from Railway env vars (or defaults)
+process.env.SERVICE_TYPE = process.env.SERVICE_TYPE || 'deepseek-free'
+
 async function main() {
-  const { startWechat } = await import('./src/index.js')
-  const serviceType = process.env.SERVICE_TYPE || 'deepseek-free'
-  console.log('Starting bot with service:', serviceType)
-  await startWechat(serviceType)
+  const { startWechatBot } = await import('./src/platforms/wechat/bot.js')
+  console.log('Starting WeChat bot...')
+  startWechatBot({ serviceType: process.env.SERVICE_TYPE })
 }
 main().catch((e) => {
-  console.error(e)
+  console.error('FATAL:', e.message)
   process.exit(1)
 })
