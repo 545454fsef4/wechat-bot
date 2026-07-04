@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node ./cli.js",
+    "dev": "node ./cli.js start --serve deepseek-free",
     "format": "prettier --write ./src",
     "start": "node ./cli.js start --serve deepseek-free",
     "test": "node ./src/wechaty/testMessage.js",
