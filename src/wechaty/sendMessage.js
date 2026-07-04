@@ -21,8 +21,8 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const remarkName = await contact.alias() // 备注名称
   const name = await contact.name() // 微信名称
   const isText = msg.type() === bot.Message.Type.Text // 消息类型是否为文本
-  const isRoom = roomWhiteList.includes(roomName) && content.includes(`${botName}`) // 是否在群聊白名单内并且艾特了机器人
-  const isAlias = aliasWhiteList.includes(remarkName) || aliasWhiteList.includes(name) // 发消息的人是否在联系人白名单内
+  const isRoom = (roomWhiteList.length === 0 || roomWhiteList.includes(roomName)) && content.includes(`${botName}`) // 是否在群聊白名单内并且艾特了机器人(空白名单=全部开放)
+  const isAlias = aliasWhiteList.length === 0 || aliasWhiteList.includes(remarkName) || aliasWhiteList.includes(name) // 发消息的人是否在联系人白名单内(空白名单=全部开放)
   const isBotSelf = botName === `@${remarkName}` || botName === `@${name}` // 是否是机器人自己
   const isBotSelfDebug = content.trimStart().startsWith('你是谁') // 是否是机器人自己的调试消息
   const isAuthorizedCommand = (room && isRoom) || (!room && isAlias)
