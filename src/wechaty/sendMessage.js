@@ -2,6 +2,8 @@ import { getServe } from './serve.js'
 import { getGeminiVisionReply, getVideoVisionReply } from '../dual-model/index.js'
 import { getWechatRuntimeConfig } from '../config/env.js'
 import { handleWechatCommand } from '../platforms/wechat/commandRouter.js'
+import { parseStickerTag } from './sticker.js'
+import { FileBox } from 'file-box'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
@@ -120,7 +122,17 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
       const question = content.replace(`${autoReplyPrefix}`, '')
       console.log('🌸🌸🌸 / content: ', question)
       const response = await getReply(question, alias)
-      await contact.say(response)
+      // ── 检测表情包标记 [sticker:名称] ──
+      const { text, stickerFile } = parseStickerTag(response)
+      if (text) await contact.say(text)
+      if (stickerFile) {
+        try {
+          await contact.say(FileBox.fromFile(stickerFile))
+        } catch (e) {
+          console.error('表情包发送失败:', e.message)
+          await contact.say(`[${e.message}]`)
+        }
+      }
     }
   } catch (e) {
     console.error(e)
