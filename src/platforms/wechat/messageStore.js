@@ -20,7 +20,14 @@ export async function captureWechatMessage(message, bot, options = {}) {
   const receiver = message.to()
   const room = message.room()
   const isText = message.type() === bot.Message.Type.Text
-  const roomName = room ? await room.topic() : ''
+  let roomName = ''
+  if (room) {
+    try {
+      roomName = (await room.topic()) || ''
+    } catch (e) {
+      /* 群信息未就绪，跳过 */
+    }
+  }
   const talkerAlias = talker ? await talker.alias() : ''
   const talkerName = talker ? await talker.name() : ''
   const receiverName = receiver ? await receiver.name() : ''

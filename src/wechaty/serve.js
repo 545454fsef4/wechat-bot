@@ -34,6 +34,8 @@ export function getServe(serviceType) {
       return lazyServe(() => import('../tongyi/index.js'), 'getTongyiReply')
     case 'claude':
       return lazyServe(() => import('../claude/index.js'), 'getClaudeReply')
+    case 'dual-model':
+      return lazyServe(() => import('../dual-model/index.js'), 'getDualModelReply')
     case 'pi':
       return lazyServe(() => import('../pi/index.js'), 'getPiReply')
     default:

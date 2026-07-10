@@ -19,6 +19,7 @@ export function getWechatRuntimeConfig() {
     botName: env.BOT_NAME || '',
     autoReplyPrefix: env.AUTO_REPLY_PREFIX || '',
     aliasWhiteList: readCsvEnv('ALIAS_WHITELIST'),
+    tagWhiteList: readCsvEnv('TAG_WHITELIST'),
     roomWhiteList: readCsvEnv('ROOM_WHITELIST'),
     dataDir: env.WECHAT_DATA_DIR || '.data/wechat',
     storeMessages: env.WECHAT_STORE_MESSAGES !== 'false',

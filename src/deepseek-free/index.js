@@ -8,11 +8,11 @@ const model = env.DEEPSEEK_FREE_MODEL
 const url = env.DEEPSEEK_FREE_URL
 const syscontent = env.DEEPSEEK_FREE_SYSTEM_MESSAGE
 
-function setConfig(prompt) {
+function setConfig(prompt, userName) {
+  const userMessage = userName ? `[对话者: ${userName}] ${prompt}` : prompt
   return {
     method: 'post',
     maxBodyLength: Infinity,
-    // url: 'https://api.deepseek.com/chat/completions',
     url: url,
     headers: {
       'Content-Type': 'application/json',
@@ -28,7 +28,7 @@ function setConfig(prompt) {
         },
         {
           role: 'user',
-          content: prompt,
+          content: userMessage,
         },
       ],
       stream: false,
@@ -36,9 +36,9 @@ function setConfig(prompt) {
   }
 }
 
-export async function getDeepSeekFreeReply(prompt) {
+export async function getDeepSeekFreeReply(prompt, userName = '') {
   try {
-    const config = setConfig(prompt)
+    const config = setConfig(prompt, userName)
     const response = await axios(config)
     const { choices } = response.data
     return choices[0].message.content
