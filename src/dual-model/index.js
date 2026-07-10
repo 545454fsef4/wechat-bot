@@ -7,7 +7,10 @@ import { tmpdir } from 'os'
 dotenv.config()
 const env = dotenv.config().parsed
 
-const SYSTEM_MESSAGE = env.DUAL_MODEL_SYSTEM_MESSAGE || env.DEEPSEEK_FREE_SYSTEM_MESSAGE || ''
+const _BASE_SYSTEM = env.DUAL_MODEL_SYSTEM_MESSAGE || env.DEEPSEEK_FREE_SYSTEM_MESSAGE || ''
+const STICKER_HINT =
+  '\n\n回复时可适当用 emoji 让聊天更生动。如需发图片表情包，加 [sticker:名称]，可用: ok / no / laugh / cry / angry / love / sleep / bye / question / thumbsup。'
+const SYSTEM_MESSAGE = _BASE_SYSTEM ? _BASE_SYSTEM + STICKER_HINT : ''
 
 // ========== DeepSeek 文字回复（直连） ==========
 export async function getDualModelReply(prompt, userName = '') {
