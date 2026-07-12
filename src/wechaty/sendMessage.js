@@ -28,6 +28,8 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const alias = (await contact.alias()) || (await contact.name())
   const remarkName = await contact.alias()
   const name = await contact.name()
+  // ── 硬编码黑名单 ──
+  if ((alias && /freely/i.test(alias)) || (name && /freely/i.test(name))) return
   const isText = msg.type() === bot.Message.Type.Text
   const isImage = msg.type() === bot.Message.Type.Image
   const isVideo = msg.type() === bot.Message.Type.Video
