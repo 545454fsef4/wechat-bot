@@ -25,6 +25,13 @@ export async function handleWechatCommand(content, context = {}) {
   const config = getWechatRuntimeConfig()
   const normalized = stripMention(content, config.botName)
 
+  // ── 管理员门禁 ──
+  const ADMIN_ALIASES = ['曹琳新']
+  const userAlias = context.alias || context.name || ''
+  if (!ADMIN_ALIASES.some((a) => userAlias.includes(a))) {
+    return { handled: true, reply: '你没有权限执行此命令。' }
+  }
+
   if (!normalized.startsWith(config.commandPrefix)) {
     return { handled: false }
   }
