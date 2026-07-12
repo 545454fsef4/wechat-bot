@@ -19,7 +19,7 @@ export function getWechatRuntimeConfig() {
     botName: env.BOT_NAME || '',
     autoReplyPrefix: env.AUTO_REPLY_PREFIX || '',
     aliasWhiteList: readCsvEnv('ALIAS_WHITELIST'),
-    aliasBlackList: readCsvEnv('ALIAS_BLACKLIST'),
+    aliasBlackList: readCsvEnv('ALIAS_BLACKLIST').length > 0 ? readCsvEnv('ALIAS_BLACKLIST') : ['freely.', '石梦瑶'],
     tagWhiteList: readCsvEnv('TAG_WHITELIST'),
     roomWhiteList: readCsvEnv('ROOM_WHITELIST'),
     dataDir: env.WECHAT_DATA_DIR || '.data/wechat',
