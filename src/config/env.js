@@ -19,7 +19,6 @@ export function getWechatRuntimeConfig() {
     botName: env.BOT_NAME || '',
     autoReplyPrefix: env.AUTO_REPLY_PREFIX || '',
     aliasWhiteList: readCsvEnv('ALIAS_WHITELIST'),
-    aliasBlackList: readCsvEnv('ALIAS_BLACKLIST'),
     tagWhiteList: readCsvEnv('TAG_WHITELIST'),
     roomWhiteList: readCsvEnv('ROOM_WHITELIST'),
     dataDir: env.WECHAT_DATA_DIR || '.data/wechat',
