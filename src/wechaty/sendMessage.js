@@ -1,5 +1,5 @@
 import { getServe } from './serve.js'
-import { getGeminiVisionReply, getVideoVisionReply } from '../dual-model/index.js'
+import { getGeminiVisionReply, getVideoVisionReply, getWhisperASR } from '../dual-model/index.js'
 import { getWechatRuntimeConfig } from '../config/env.js'
 import { handleWechatCommand } from '../platforms/wechat/commandRouter.js'
 import { parseStickerTag } from './sticker.js'
@@ -7,6 +7,10 @@ import { FileBox } from 'file-box'
 import { writeFileSync } from 'fs'
 import { join } from 'path'
 import { tmpdir } from 'os'
+
+// AI 生成免责声明
+const AI_DISCLAIMER = '\n\n——此内容为AI生成，本人不对其一切言论负责'
+const addDisclaimer = (text) => (text && typeof text === 'string' && !text.startsWith('[') ? text + AI_DISCLAIMER : text)
 
 /**
  * 默认消息发送
@@ -19,7 +23,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   // 不处理自己发出的消息（防止自我识别幻觉/循环）
   if (msg.self()) return
 
-  const { botName, autoReplyPrefix, aliasWhiteList, tagWhiteList, roomWhiteList, commandPrefix } = getWechatRuntimeConfig()
+  const { botName, autoReplyPrefix, aliasWhiteList, aliasBlackList, tagWhiteList, roomWhiteList, commandPrefix } = getWechatRuntimeConfig()
   const getReply = getServe(ServiceType)
   const contact = msg.talker()
   const content = msg.text()
@@ -31,6 +35,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const isText = msg.type() === bot.Message.Type.Text
   const isImage = msg.type() === bot.Message.Type.Image
   const isVideo = msg.type() === bot.Message.Type.Video
+  const isAudio = msg.type() === bot.Message.Type.Audio
   const isRoom = (roomWhiteList.length === 0 || roomWhiteList.includes(roomName)) && content.includes(`${botName}`)
   const isAlias = aliasWhiteList.length === 0 || aliasWhiteList.includes(remarkName) || aliasWhiteList.includes(name)
   const isBotSelf = botName === `@${remarkName}` || botName === `@${name}`
@@ -55,6 +60,13 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
 
   if (room) return // 不回复群聊消息
 
+  // ── 黑名单检查 ──
+  const isBlacklisted = aliasBlackList.length > 0 && aliasBlackList.some((item) => alias?.includes(item) || name?.includes(item))
+  if (isBlacklisted) {
+    console.log(`🚫 黑名单拦截: ${alias || name}`)
+    return
+  }
+
   const isAuthorized = isTagAllowed && (aliasWhiteList.length === 0 || isAlias)
 
   // ── 图片消息 → Gemini Vision ──
@@ -66,7 +78,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
       const mimeType = fileBox.mediaType || 'image/jpeg'
       const visionResult = await getGeminiVisionReply(base64, mimeType)
       console.log('👁️ Vision 结果:', visionResult)
-      await contact.say(visionResult)
+      await contact.say(addDisclaimer(visionResult))
     } catch (e) {
       console.error('图片识别出错:', e.message)
     }
@@ -83,10 +95,50 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
       await fileBox.toFile(tmpPath)
       const videoResult = await getVideoVisionReply(tmpPath)
       console.log('🎬 视频识别结果:', videoResult)
-      await contact.say(videoResult)
+      await contact.say(addDisclaimer(videoResult))
     } catch (e) {
       console.error('视频识别出错:', e.message)
       await contact.say(`视频识别失败: ${e.message}`)
+    }
+    return
+  }
+
+  // ── 语音消息 → Whisper ASR → 文字 → DeepSeek ──
+  if (isAudio && isAuthorized && !isBotSelf) {
+    try {
+      console.log('🎤 收到语音，转文字中...')
+      await contact.say('🎤 正在听...')
+      const fileBox = await msg.toFileBox()
+      const tmpPath = join(tmpdir(), `wechat-audio-${Date.now()}.slk`)
+      await fileBox.toFile(tmpPath)
+      const transcript = await getWhisperASR(tmpPath)
+      console.log('📝 语音识别:', transcript)
+
+      if (transcript.startsWith('[')) {
+        // ASR 失败
+        await contact.say(transcript)
+        return
+      }
+
+      if (!transcript || transcript === '[未识别到语音内容]') {
+        await contact.say('没听清，再说一遍？')
+        return
+      }
+
+      // 将识别文字作为输入，调用 AI 回复
+      const response = await getReply(transcript, alias)
+      const { text, stickerFile } = parseStickerTag(response)
+      if (text) await contact.say(addDisclaimer(text))
+      if (stickerFile) {
+        try {
+          await contact.say(FileBox.fromFile(stickerFile))
+        } catch (e) {
+          console.error('表情包发送失败:', e.message)
+        }
+      }
+    } catch (e) {
+      console.error('语音处理出错:', e.message)
+      await contact.say(`语音识别失败: ${e.message}`)
     }
     return
   }
@@ -105,7 +157,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
       })
       if (commandResult.handled) {
         if (commandResult.reply) {
-          await (room || contact).say(commandResult.reply)
+          await (room || contact).say(addDisclaimer(commandResult.reply))
         }
         return
       }
@@ -115,7 +167,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
       const question = (await msg.mentionText()) || content.replace(`${botName}`, '').replace(`${autoReplyPrefix}`, '')
       console.log('🌸🌸🌸 / question: ', question)
       const response = await getReply(question, alias)
-      await room.say(response)
+      await room.say(addDisclaimer(response))
     }
 
     if (isAlias && isTagAllowed && !room && content.trimStart().startsWith(`${autoReplyPrefix}`)) {
@@ -124,7 +176,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
       const response = await getReply(question, alias)
       // ── 检测表情包标记 [sticker:名称] ──
       const { text, stickerFile } = parseStickerTag(response)
-      if (text) await contact.say(text)
+      if (text) await contact.say(addDisclaimer(text))
       if (stickerFile) {
         try {
           await contact.say(FileBox.fromFile(stickerFile))
