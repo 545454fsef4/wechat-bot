@@ -28,8 +28,7 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const alias = (await contact.alias()) || (await contact.name())
   const remarkName = await contact.alias()
   const name = await contact.name()
-  // ── 硬编码黑名单 ──
-  if ((alias && /freely/i.test(alias)) || (name && /freely/i.test(name))) return
+  // ── 硬编码黑名单（已取消） ──
   const isText = msg.type() === bot.Message.Type.Text
   const isImage = msg.type() === bot.Message.Type.Image
   const isVideo = msg.type() === bot.Message.Type.Video
@@ -37,6 +36,19 @@ export async function defaultMessage(msg, bot, ServiceType = 'GPT') {
   const isAlias = aliasWhiteList.length === 0 || aliasWhiteList.includes(remarkName) || aliasWhiteList.includes(name)
   const isBotSelf = botName === `@${remarkName}` || botName === `@${name}`
   const isBotSelfDebug = content.trimStart().startsWith('你是谁')
+
+  // ── 唤醒机制：仅当对方发送 {1} 后才开始对话 ──
+  const contactKey = remarkName || name
+  const isWakeTrigger = content.trim() === WAKE_TRIGGER
+  if (isWakeTrigger && !room) {
+    awakenedContacts.add(contactKey)
+    console.log(`🔔 唤醒了 ${contactKey}，开始对话`)
+    // 唤醒词本身也作为一条消息继续处理（发给 AI）
+  } else if (!awakenedContacts.has(contactKey) && !room) {
+    // 未唤醒：静默忽略
+    console.log(`💤 ${contactKey} 未唤醒，忽略消息: ${content.slice(0, 30)}`)
+    return
+  }
 
   // ── 标签白名单检查（wechat4u 不支持标签API，此处仅做占位）──
   // 如需按标签过滤，请改用 ALIAS_WHITELIST 配置备注名白名单

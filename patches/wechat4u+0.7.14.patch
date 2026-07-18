@@ -1,5 +1,5 @@
 diff --git a/node_modules/wechat4u/lib/core.js b/node_modules/wechat4u/lib/core.js
-index 9d55761..d53941f 100644
+index 9d55761..60598a8 100644
 --- a/node_modules/wechat4u/lib/core.js
 +++ b/node_modules/wechat4u/lib/core.js
 @@ -136,7 +136,10 @@ var WechatCore = function () {
@@ -14,3 +14,15 @@ index 9d55761..d53941f 100644
  
            if (window.code === 200) {
              _this3.CONF = (0, _util.getCONF)(window.redirect_uri.match(/(?:\w+\.)+\w+/)[0]);
+@@ -323,7 +326,10 @@ var WechatCore = function () {
+           data: data
+         }).then(function (res) {
+           var data = res.data;
+-          _util.assert.equal(data.BaseResponse.Ret, 0, res);
++          if (data.BaseResponse.Ret !== 0) {
++            console.log('batchGetContact returned ' + data.BaseResponse.Ret + ', ignoring...');
++            return [];
++          }
+ 
+           return data.ContactList;
+         });

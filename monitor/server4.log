@@ -1,0 +1,11 @@
+[monitor] Dashboard: http://localhost:3002
+[monitor] API:      http://localhost:3002/api/status
+[monitor] WebSocket: ws://localhost:3002
+[monitor] Fast ping: 100ms | Health: 2000ms | Messages: 100ms | WS push: 33ms
+[monitor] WebSocket client connected
+[monitor] WebSocket client connected
+[monitor] WebSocket client connected
+[monitor] WebSocket client disconnected
+[monitor] WebSocket client connected
+[monitor] WebSocket client disconnected
+[monitor] WebSocket client connected

@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>国家领土模拟器 - 完整版</title>
+   <script src="https://cdn.tailwindcss.com"></script>
+   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Noto+Sans+SC:wght@300;400;700&display=swap" rel="stylesheet">
+   <style>
+       body {
+           font-family: 'Noto Sans SC', sans-serif;
+           background-color: #0f172a;
+           color: #e2e8f0;
+           overflow: hidden;
+       }
+       .font-tech {
+           font-family: 'Orbitron', sans-serif;
+       }
+       .glass-panel {
+           background: rgba(30, 41, 59, 0.7);
+           backdrop-filter: blur(10px);
+           border: 1px solid rgba(148, 163, 184, 0.1);
+           box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+       }
+       .neon-text {
+           text-shadow: 0 0 5px rgba(56, 189, 248, 0.5), 0 0 10px rgba(56, 189, 248, 0.3);
+       }
+       .btn-action {
+           transition: all 0.2s;
+           position: relative;
+           overflow: hidden;
+       }
+       .btn-action:active {
+           transform: scale(0.95);
+       }
+       .btn-action::after {
+           content: '';
+           position: absolute;
+           top: 0;
+           left: -100%;
+           width: 100%;
+           height: 100%;
+           background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+           transition: 0.5s;
+       }
+       .btn-action:hover::after {
+           left: 100%;
+       }
+       /* Custom Scrollbar for Log */
+       ::-webkit-scrollbar {
+           width: 6px;
+       }
+       ::-webkit-scrollbar-track {
+           background: #1e293b; 
+       }
+       ::-webkit-scrollbar-thumb {
+           background: #475569; 
+           border-radius: 3px;
+       }
+       ::-webkit-scrollbar-thumb:hover {
+           background: #64748b; 
+       }
+       
+       .modal-enter {
+           animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+       }
+       @keyframes modalPop {
+           0% { opacity: 0; transform: scale(0.8); }
+           100% { opacity: 1; transform: scale(1); }
+       }
+       
+       .shake {
+           animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+       }
+       @keyframes shake {
+           10%, 90% { transform: translate3d(-1px, 0, 0); }
+           20%, 80% { transform: translate3d(2px, 0, 0); }
+           30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+           40%, 60% { transform: translate3d(4px, 0, 0); }
+       }
+   </style>
+</head>
+<body class="h-screen w-screen flex flex-col relative selection:bg-cyan-500 selection:text-white">
+
+   <!-- START OVERLAY -->
+   <div id="startOverlay" class="fixed inset-0 z-50 bg-slate-900 flex items-center justify-center bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
+       <div class="glass-panel p-8 rounded-2xl max-w-md w-full text-center border border-cyan-500/30 shadow-[0_0_50px_rgba(6,182,212,0.15)] modal-enter">
+           <h1 class="text-4xl font-tech font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-600 neon-text">TERRITORY SIM</h1>
+           <p class="text-slate-400 mb-8 text-sm tracking-widest">国家领土模拟器 v2.0</p>
+           
+           <div class="space-y-4 text-left">
+               <div>
+                   <label class="block text-xs text-cyan-400 mb-1 uppercase tracking-wider">国家名称</label>
+                   <input type="text" id="inputNationName" class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 focus:outline-none transition-colors" placeholder="例如：赛博利亚帝国">
+               </div>
+               <div>
+                   <label class="block text-xs text-cyan-400 mb-1 uppercase tracking-wider">首都名称</label>
+                   <input type="text" id="inputCapitalName" class="w-full bg-slate-800 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 focus:outline-none transition-colors" placeholder="例如：新东京">
+               </div>
+               <div>
+                   <label class="block text-xs text-cyan-400 mb-1 uppercase tracking-wider">国旗颜色</label>
+                   <div class="flex gap-2 mt-2">
+                       <button onclick="selectColor('#ef4444')" class="w-8 h-8 rounded-full bg-red-500 hover:scale-110 transition ring-2 ring-offset-2 ring-offset-slate-900 ring-transparent focus:ring-white color-btn" data-color="#ef4444"></button>
+                       <button onclick="selectColor('#3b82f6')" class="w-8 h-8 rounded-full bg-blue-500 hover:scale-110 transition ring-2 ring-offset-2 ring-offset-slate-900 ring-transparent focus:ring-white color-btn" data-color="#3b82f6"></button>
+                       <button onclick="selectColor('#10b981')" class="w-8 h-8 rounded-full bg-emerald-500 hover:scale-110 transition ring-2 ring-offset-2 ring-offset-slate-900 ring-transparent focus:ring-white color-btn" data-color="#10b981"></button>
+                       <button onclick="selectColor('#f59e0b')" class="w-8 h-8 rounded-full bg-amber-500 hover:scale-110 transition ring-2 ring-offset-2 ring-offset-slate-900 ring-transparent focus:ring-white color-btn" data-color="#f59e0b"></button>
+                       <button onclick="selectColor('#8b5cf6')" class="w-8 h-8 rounded-full bg-violet-500 hover:scale-110 transition ring-2 ring-offset-2 ring-offset-slate-900 ring-transparent focus:ring-white color-btn" data-color="#8b5cf6"></button>
+                   </div>
+                   <input type="hidden" id="selectedColor" value="#3b82f6">
+               </div>
+           </div>
+
+           <button onclick="startGame()" class="mt-8 w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold py-4 rounded-lg shadow-lg transform transition hover:-translate-y-1">
+               建立国家
+           </button>
+       </div>
+   </div>
+
+   <!-- GAME UI -->
+   <div id="gameUI" class="flex-1 flex flex-col opacity-0 transition-opacity duration-1000 pointer-events-none">
+       
+       <!-- HEADER / RESOURCES -->
+       <header class="h-20 glass-panel flex items-center justify-between px-6 z-20 border-b border-slate-700">
+           <div class="flex items-center gap-4">
+               <div id="flagDisplay" class="w-10 h-10 rounded shadow-lg border border-slate-500 flex items-center justify-center text-xl font-bold">🏴</div>
+               <div>
+                   <h2 id="displayNationName" class="text-xl font-bold text-white leading-tight">未知国家</h2>
+                   <span id="displayCapitalName" class="text-xs text-cyan-400 uppercase tracking-wider">首都: 未知</span>
+               </div>
+           </div>
+
+           <!-- Resource Bar -->
+           <div class="flex gap-6 font-tech text-sm">
+               <div class="flex flex-col items-center group cursor-help" title="用于建造和招募">
+                   <span class="text-yellow-400 font-bold text-lg flex items-center gap-1">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                       <span id="resGold">1000</span>
+                   </span>
+                   <span class="text-[10px] text-slate-400 group-hover:text-yellow-200 transition">金币</span>
+               </div>
+               <div class="flex flex-col items-center group cursor-help" title="影响收入和军队上限">
+                   <span class="text-blue-400 font-bold text-lg flex items-center gap-1">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                       <span id="resPop">100</span>
+                   </span>
+                   <span class="text-[10px] text-slate-400 group-hover:text-blue-200 transition">人口</span>
+               </div>
+               <div class="flex flex-col items-center group cursor-help" title="用于防御和进攻">
+                   <span class="text-red-400 font-bold text-lg flex items-center gap-1">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                       <span id="resArmy">50</span>
+                   </span>
+                   <span class="text-[10px] text-slate-400 group-hover:text-red-200 transition">军队</span>
+               </div>
+               <div class="flex flex-col items-center group cursor-help" title="影响人口增长和叛乱风险">
+                   <span class="text-green-400 font-bold text-lg flex items-center gap-1">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                       <span id="resHappy">80</span>%
+                   </span>
+                   <span class="text-[10px] text-slate-400 group-hover:text-green-200 transition">幸福度</span>
+               </div>
+           </div>
+           
+           <div class="text-right">
+               <div class="text-xs text-slate-500">第 <span id="turnCount" class="text-white font-bold">1</span> 回合</div>
+               <div class="text-[10px] text-cyan-600 animate-pulse">LIVE SIMULATION</div>
+           </div>
+       </header>
+
+       <!-- MAIN CONTENT -->
+       <div class="flex-1 flex overflow-hidden relative">
+           
+           <!-- LEFT CONTROL PANEL -->
+           <aside class="w-64 glass-panel border-r border-slate-700 flex flex-col z-10">
+               <div class="p-4 border-b border-slate-700">
+                   <h3 class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">行政指令</h3>
+                   <div class="space-y-3">
+                       <button onclick="game.buildCity()" class="btn-action w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-left px-4 py-3 rounded flex items-center gap-3 group">
+                           <div class="w-8 h-8 rounded bg-blue-900/50 flex items-center justify-center text-blue-400 group-hover:text-white group-hover:bg-blue-600 transition">
+                               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path></svg>
+                           </div>
+                           <div>
+                               <div class="text-sm font-bold text-slate-200">建造城市</div>
+                               <div class="text-[10px] text-slate-500">-500 金币 | +50 人口上限</div>
+                           </div>
+                       </button>
+
+                       <button onclick="game.recruitArmy()" class="btn-action w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-left px-4 py-3 rounded flex items-center gap-3 group">
+                           <div class="w-8 h-8 rounded bg-red-900/50 flex items-center justify-center text-red-400 group-hover:text-white group-hover:bg-red-600 transition">
+                               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                           </div>
+                           <div>
+                               <div class="text-sm font-bold text-slate-200">招募军队</div>
+                               <div class="text-[10px] text-slate-500">-200 金币 | +20 军队</div>
+                           </div>
+                       </button>
+
+                       <button onclick="game.openDiplomacy()" class="btn-action w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-left px-4 py-3 rounded flex items-center gap-3 group">
+                           <div class="w-8 h-8 rounded bg-purple-900/50 flex items-center justify-center text-purple-400 group-hover:text-white group-hover:bg-purple-600 transition">
+                               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                           </div>
+                           <div>
+                               <div class="text-sm font-bold text-slate-200">外交事务</div>
+                               <div class="text-[10px] text-slate-500">查看关系 & 贸易</div>
+                           </div>
+                       </button>
+
+                       <button onclick="game.expandTerritory()" class="btn-action w-full bg-slate-800 hover:bg-slate-700 border border-slate-600 text-left px-4 py-3 rounded flex items-center gap-3 group">
+                           <div class="w-8 h-8 rounded bg-emerald-900/50 flex items-center justify-center text-emerald-400 group-hover:text-white group-hover:bg-emerald-600 transition">
+                               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                           </div>
+                           <div>
+                               <div class="text-sm font-bold text-slate-200">购买领土</div>
+                               <div class="text-[10px] text-slate-500">-800 金币 | +1 地块</div>
+                           </div>
+                       </button>
+                   </div>
+               </div>
+
+               <div class="p-4 mt-auto">
+                   <button onclick="game.endTurn()" class="btn-action w-full bg-gradient-to-r from-cyan-700 to-blue-700 hover:from-cyan-600 hover:to-blue-600 text-white font-bold py-3 rounded shadow-[0_0_15px_rgba(6,182,212,0.3)] border border-cyan-500/50">
+                       结束回合
+                   </button>
+               </div>
+           </aside>
+
+           <!-- CENTER MAP -->
+           <main class="flex-1 bg-slate-900 relative overflow-hidden cursor-crosshair">
+               <!-- Grid Background -->
+               <div class="absolute inset-0 opacity-20" style="background-image: linear-gradient(#334155 1px, transparent 1px), linear-gradient(90deg, #334155 1px, transparent 1px); background-size: 40px 40px;"></div>
+               
+               <!-- Canvas Layer -->
+               <canvas id="gameCanvas" class="absolute inset-0 w-full h-full"></canvas>
+
+               <!-- Floating Labels (Dynamic) -->
+               <div id="mapLabels" class="absolute inset-0 pointer-events-none"></div>
+               
+               <!-- Notification Toast -->
+               <div id="toastContainer" class="absolute top-4 left-1/2 transform -translate-x-1/2 flex flex-col gap-2 pointer-events-none z-30"></div>
+           </main>
+
+           <!-- RIGHT LOG PANEL -->
+           <aside class="w-72 glass-panel border-l border-slate-700 flex flex-col z-10 absolute right-0 bottom-0 h-64 m-4 rounded-lg overflow-hidden shadow-2xl md:relative md:m-0 md:h-auto md:rounded-none">
+               <div class="p-3 bg-slate-800/80 border-b border-slate-700 flex justify-between items-center">
+                   <h3 class="text-xs font-bold text-slate-300 uppercase tracking-widest flex items-center gap-2">
+                       <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                       事件日志
+                   </h3>
+                   <button onclick="game.toggleLog()" class="text-slate-500 hover:text-white md:hidden">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                   </button>
+               </div>
+               <div id="logContent" class="flex-1 overflow-y-auto p-3 space-y-2 font-mono text-xs">
+                   <!-- Logs go here -->
+                   <div class="text-slate-500 italic">等待国家建立...</div>
+               </div>
+           </aside>
+       </div>
+   </div>
+
+   <!-- DIPLOMACY MODAL -->
+   <div id="diplomacyModal" class="fixed inset-0 z-40 bg-black/80 hidden items-center justify-center backdrop-blur-sm">
+       <div class="glass-panel w-full max-w-2xl rounded-xl border border-slate-600 shadow-2xl transform transition-all scale-95 opacity-0" id="diplomacyContent">
+           <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+               <h2 class="text-2xl font-tech text-white">外交情报网</h2>
+               <button onclick="game.closeDiplomacy()" class="text-slate-400 hover:text-white">
+                   <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+               </button>
+           </div>
+           <div class="p-6">
+               <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="nationList">
+                   <!-- Nations injected here -->
+               </div>
+           </div>
+       </div>
+   </div>
+
+   <!-- DEV CONSOLE (Crack Menu) -->
+   <div class="fixed bottom-4 left-4 z-50">
+       <button onclick="toggleDevMenu()" class="w-8 h-8 rounded-full bg-slate-800 border border-slate-600 text-slate-600 hover:text-yellow-400 hover:border-yellow-400 flex items-center justify-center transition opacity-50 hover:opacity-100" title="Dev Console">
+           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>
+       </button>
+       <div id="devMenu" class="hidden absolute bottom-10 left-0 bg-black/90 border border-yellow-500/30 p-4 rounded-lg w-64 backdrop-blur-md shadow-xl">
+           <h4 class="text-yellow-500 text-xs font-bold mb-3 uppercase">开发者控制台</h4>
+           <div class="space-y-2">
+               <button onclick="game.cheat('gold')" class="w-full text-left text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-slate-300">+1000 金币</button>
+               <button onclick="game.cheat('army')" class="w-full text-left text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-slate-300">+100 军队</button>
+               <button onclick="game.cheat('happy')" class="w-full text-left text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-slate-300">幸福度全满</button>
+               <button onclick="game.cheat('win')" class="w-full text-left text-xs bg-slate-800 hover:bg-slate-700 p-2 rounded text-green-400">立即胜利 (占领全图)</button>
+           </div>
+       </div>
+   </div>
+
+   <script>
+       // --- AUDIO SYSTEM (Tone.js) ---
+       let synth, membrane, metal;
+       let audioInitialized = false;
+
+       async function initAudio() {
+           if(audioInitialized) return;
+           await Tone.start();
+           
+           // UI Sounds
+           synth = new Tone.PolySynth(Tone.Synth).toDestination();
+           synth.volume.value = -10;
+
+           // Thud/Impact
+           membrane = new Tone.MembraneSynth().toDestination();
+           membrane.volume.value = -10;
+
+           // High tech ping
+           metal = new Tone.MetalSynth({
+               frequency: 200,
+               envelope: { attack: 0.001, decay: 0.1, release: 0.01 },
+               harmonicity: 5.1,
+               modulationIndex: 32,
+               resonance: 4000,
+               octaves: 1.5
+           }).toDestination();
+           metal.volume.value = -15;
+
+           audioInitialized = true;
+       }
+
+       function playSound(type) {
+           if(!audioInitialized) return;
+           try {
+               switch(type) {
+                   case 'click': synth.triggerAttackRelease(["C6"], "32n"); break;
+                   case 'build': membrane.triggerAttackRelease("C2", "8n"); break;
+                   case 'coin': metal.triggerAttackRelease("32n", 0.1); break;
+                   case 'error': synth.triggerAttackRelease(["A2", "C3"], "16n"); break;
+                   case 'win': 
+                       const now = Tone.now();
+                       metal.triggerAttackRelease("16n", now);
+                       metal.triggerAttackRelease("16n", now + 0.1);
+                       metal.triggerAttackRelease("16n", now + 0.2);
+                       break;
+               }
+           } catch(e) { console.log("Audio error", e); }
+       }
+
+       // --- GAME CONFIG & STATE ---
+       const GRID_SIZE = 40;
+       const COLS = 30;
+       const ROWS = 20;
+       
+       const game = {
+           nation: {
+               name: "",
+               capital: "",
+               color: "#3b82f6",
+               gold: 1000,
+               pop: 100,
+               army: 50,
+               happiness: 80,
+               territory: [], // Array of {x, y}
+               cities: [] // Array of {x, y, name}
+           },
+           turn: 1,
+           aiNations: [],
+           map: [], // 2D array: 0=empty, 1=player, 2=ai1, etc.
+           canvas: null,
+           ctx: null,
+           camera: { x: 0, y: 0, zoom: 1 },
+           selectedColor: "#3b82f6",
+           
+           init: function() {
+               this.canvas = document.getElementById('gameCanvas');
+               this.ctx = this.canvas.getContext('2d');
+               this.resizeCanvas();
+               window.addEventListener('resize', () => this.resizeCanvas());
+               
+               // Generate Map Data
+               this.map = Array(ROWS).fill().map(() => Array(COLS).fill(0));
+               
+               // Center Camera
+               this.camera.x = (this.canvas.width - COLS * GRID_SIZE) / 2;
+               this.camera.y = (this.canvas.height - ROWS * GRID_SIZE) / 2;
+
+               this.loop();
+           },
+
+           resizeCanvas: function() {
+               this.canvas.width = this.canvas.parentElement.clientWidth;
+               this.canvas.height = this.canvas.parentElement.clientHeight;
+           },
+
+           start: function(name, capital, color) {
+               this.nation.name = name;
+               this.nation.capital = capital;
+               this.nation.color = color;
+               
+               // Initial Territory (Center)
+               const cx = Math.floor(COLS / 2);
+               const cy = Math.floor(ROWS / 2);
+               this.addTerritory(cx, cy, 1);
+               this.addTerritory(cx+1, cy, 1);
+               this.addTerritory(cx, cy+1, 1);
+               this.addTerritory(cx-1, cy, 1);
+               
+               // Initial City
+               this.nation.cities.push({x: cx, y: cy, name: capital});
+
+               // Generate AI
+               this.generateAI();
+
+               this.updateUI();
+               this.log(`欢迎来到 ${name}。您的统治开始了。`, 'success');
+               playSound('win');
+           },
+
+           generateAI: function() {
+               const aiColors = ['#ef4444', '#10b981', '#f59e0b', '#8b5cf6'];
+               const aiNames = ['东方联邦', '北方王国', '南方共和国', '西部部落'];
+               
+               for(let i=0; i<4; i++) {
+                   let ax, ay, valid = false;
+                   // Find empty spot
+                   let attempts = 0;
+                   while(!valid && attempts < 100) {
+                       ax = Math.floor(Math.random() * (COLS-4)) + 2;
+                       ay = Math.floor(Math.random() * (ROWS-4)) + 2;
+                       // Check distance from player
+                       const dx = ax - Math.floor(COLS/2);
+                       const dy = ay - Math.floor(ROWS/2);
+                       if(Math.sqrt(dx*dx + dy*dy) > 5 && this.map[ay][ax] === 0) {
+                           valid = true;
+                       }
+                       attempts++;
+                   }
+                   
+                   if(valid) {
+                       this.aiNations.push({
+                           id: i+2,
+                           name: aiNames[i],
+                           color: aiColors[i],
+                           gold: 800,
+                           army: 40,
+                           relation: 50, // 0-100
+                           territory: [{x: ax, y: ay}, {x: ax+1, y: ay}, {x: ax, y: ay+1}]
+                       });
+                       this.map[ay][ax] = i+2;
+                       this.map[ay][ax+1] = i+2;
+                       this.map[ay+1][ax] = i+2;
+                   }
+               }
+           },
+
+           addTerritory: function(x, y, ownerId) {
+               if(x >= 0 && x < COLS && y >= 0 && y < ROWS) {
+                   this.map[y][x] = ownerId;
+                   if(ownerId === 1) {
+                       this.nation.territory.push({x, y});
+                   }
+               }
+           },
+
+           // --- ACTIONS ---
+           buildCity: function() {
+               if(this.nation.gold >= 500) {
+                   this.nation.gold -= 500;
+                   // Pick random spot in territory
+                   const spot = this.nation.territory[Math.floor(Math.random() * this.nation.territory.length)];
+                   this.nation.cities.push({...spot, name: "新城 " + (this.nation.cities.length)});
+                   this.nation.pop += 50;
+                   this.log(`建造了新城市。人口增加。`, 'info');
+                   playSound('build');
+                   this.updateUI();
+                   this.createParticles(spot.x * GRID_SIZE + this.camera.x, spot.y * GRID_SIZE + this.camera.y, this.nation.color);
+               } else {
+                   this.log("资金不足！需要 500 金币。", 'error');
+                   playSound('error');
+               }
+           },
+
+           recruitArmy: function() {
+               if(this.nation.gold >= 200) {
+                   this.nation.gold -= 200;
+                   this.nation.army += 20;
+                   this.log(`招募了 20 名士兵。`, 'info');
+                   playSound('click');
+                   this.updateUI();
+               } else {
+                   this.log("资金不足！需要 200 金币。", 'error');
+                   playSound('error');
+               }
+           },
+
+           expandTerritory: function() {
+               if(this.nation.gold >= 800) {
+                   // Find edge of current territory
+                   let candidates = [];
+                   this.nation.territory.forEach(t => {
+                       [[0,1], [0,-1], [1,0], [-1,0]].forEach(([dx, dy]) => {
+                           const nx = t.x + dx, ny = t.y + dy;
+                           if(nx>=0 && nx<COLS && ny>=0 && ny<ROWS && this.map[ny][nx] === 0) {
+                               candidates.push({x: nx, y: ny});
+                           }
+                       });
+                   });
+                   
+                   if(candidates.length > 0) {
+                       const pick = candidates[Math.floor(Math.random() * candidates.length)];
+                       this.addTerritory(pick.x, pick.y, 1);
+                       this.nation.gold -= 800;
+                       this.log(`领土扩张至 (${pick.x}, ${pick.y})。`, 'success');
+                       playSound('build');
+                       this.updateUI();
+                   } else {
+                       this.log("没有可扩张的相邻空地。", 'error');
+                   }
+               } else {
+                   this.log("资金不足！需要 800 金币。", 'error');
+                   playSound('error');
+               }
+           },
+
+           endTurn: function() {
+               this.turn++;
+               
+               // Income
+               const income = this.nation.cities.length * 100 + 50;
+               this.nation.gold += income;
+               playSound('coin');
+               this.showToast(`+${income} 金币收入`);
+
+               // AI Turn Logic
+               this.aiNations.forEach(ai => {
+                   // Simple AI: Randomly expand if possible
+                   if(Math.random() > 0.5) {
+                       let candidates = [];
+                       ai.territory.forEach(t => {
+                           [[0,1], [0,-1], [1,0], [-1,0]].forEach(([dx, dy]) => {
+                               const nx = t.x + dx, ny = t.y + dy;
+                               if(nx>=0 && nx<COLS && ny>=0 && ny<ROWS && this.map[ny][nx] === 0) {
+                                   candidates.push({x: nx, y: ny});
+                               }
+                           });
+                       });
+                       if(candidates.length > 0) {
+                           const pick = candidates[Math.floor(Math.random() * candidates.length)];
+                           this.map[pick.y][pick.x] = ai.id;
+                           ai.territory.push(pick);
+                       }
+                   }
+               });
+
+               // Random Events
+               if(Math.random() > 0.7) {
+                   const events = [
+                       { msg: "发现了金矿！金币 +200", effect: () => this.nation.gold += 200, type: 'success' },
+                       { msg: "边境冲突，军队损失 5 人", effect: () => this.nation.army = Math.max(0, this.nation.army - 5), type: 'error' },
+                       { msg: "丰收季节，幸福度上升", effect: () => this.nation.happiness = Math.min(100, this.nation.happiness + 5), type: 'info' }
+                   ];
+                   const evt = events[Math.floor(Math.random() * events.length)];
+                   evt.effect();
+                   this.log(evt.msg, evt.type);
+               }
+
+               this.log(`第 ${this.turn} 回合开始。`, 'info');
+               this.updateUI();
+           },
+
+           // --- DIPLOMACY ---
+           openDiplomacy: function() {
+               const modal = document.getElementById('diplomacyModal');
+               const content = document.getElementById('diplomacyContent');
+               const list = document.getElementById('nationList');
+               
+               list.innerHTML = '';
+               this.aiNations.forEach(ai => {
+                   const relationColor = ai.relation > 70 ? 'text-green-400' : (ai.relation > 30 ? 'text-yellow-400' : 'text-red-400');
+                   const html = `
+                       <div class="bg-slate-800/50 p-4 rounded border border-slate-700 flex justify-between items-center">
+                           <div class="flex items-center gap-3">
+                               <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-slate-900" style="background-color: ${ai.color}">${ai.name[0]}</div>
+                               <div>
+                                   <div class="font-bold text-slate-200">${ai.name}</div>
+                                   <div class="text-xs text-slate-500">军队: ${ai.army} | 关系: <span class="${relationColor}">${ai.relation}</span></div>
+                               </div>
+                           </div>
+                           <div class="flex gap-2">
+                               <button onclick="game.diploAction('gift', ${ai.id})" class="px-3 py-1 bg-blue-900/50 hover:bg-blue-800 text-blue-200 text-xs rounded border border-blue-700">送礼</button>
+                               <button onclick="game.diploAction('threat', ${ai.id})" class="px-3 py-1 bg-red-900/50 hover:bg-red-800 text-red-200 text-xs rounded border border-red-700">威胁</button>
+                           </div>
+                       </div>
+                   `;
+                   list.innerHTML += html;
+               });
+
+               modal.classList.remove('hidden');
+               modal.classList.add('flex');
+               setTimeout(() => {
+                   content.classList.remove('scale-95', 'opacity-0');
+                   content.classList.add('scale-100', 'opacity-100');
+               }, 10);
+           },
+
+           closeDiplomacy: function() {
+               const modal = document.getElementById('diplomacyModal');
+               const content = document.getElementById('diplomacyContent');
+               content.classList.remove('scale-100', 'opacity-100');
+               content.classList.add('scale-95', 'opacity-0');
+               setTimeout(() => {
+                   modal.classList.add('hidden');
+                   modal.classList.remove('flex');
+               }, 200);
+           },
+
+           diploAction: function(type, id) {
+               const ai = this.aiNations.find(n => n.id === id);
+               if(type === 'gift') {
+                   if(this.nation.gold >= 100) {
+                       this.nation.gold -= 100;
+                       ai.relation = Math.min(100, ai.relation + 10);
+                       this.log(`向 ${ai.name} 赠送了礼物，关系改善。`, 'success');
+                       playSound('coin');
+                   } else {
+                       this.log("资金不足！", 'error');
+                   }
+               } else if (type === 'threat') {
+                   ai.relation = Math.max(0, ai.relation - 15);
+                   this.log(`威胁了 ${ai.name}，关系恶化。`, 'error');
+                   playSound('error');
+               }
+               this.openDiplomacy(); // Refresh
+               this.updateUI();
+           },
+
+           // --- RENDERING ---
+           loop: function() {
+               this.draw();
+               requestAnimationFrame(() => this.loop());
+           },
+
+           draw: function() {
+               const ctx = this.ctx;
+               ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+               
+               // Draw Grid/Territory
+               for(let y=0; y<ROWS; y++) {
+                   for(let x=0; x<COLS; x++) {
+                       const cell = this.map[y][x];
+                       const px = x * GRID_SIZE + this.camera.x;
+                       const py = y * GRID_SIZE + this.camera.y;
+                       
+                       // Base Grid
+                       ctx.strokeStyle = '#1e293b';
+                       ctx.lineWidth = 1;
+                       ctx.strokeRect(px, py, GRID_SIZE, GRID_SIZE);
+
+                       if(cell !== 0) {
+                           let color;
+                           if(cell === 1) color = this.nation.color;
+                           else {
+                               const ai = this.aiNations.find(n => n.id === cell);
+                               color = ai ? ai.color : '#fff';
+                           }
+                           
+                           ctx.fillStyle = color + '40'; // Transparent fill
+                           ctx.fillRect(px, py, GRID_SIZE, GRID_SIZE);
+                           
+                           ctx.strokeStyle = color;
+                           ctx.lineWidth = 2;
+                           ctx.strokeRect(px, py, GRID_SIZE, GRID_SIZE);
+                       }
+                   }
+               }
+
+               // Draw Cities
+               ctx.textAlign = 'center';
+               ctx.textBaseline = 'middle';
+               ctx.font = '16px Arial';
+               
+               // Player Cities
+               this.nation.cities.forEach(city => {
+                   const px = city.x * GRID_SIZE + this.camera.x + GRID_SIZE/2;
+                   const py = city.y * GRID_SIZE + this.camera.y + GRID_SIZE/2;
+                   
+                   // Glow
+                   ctx.shadowColor = this.nation.color;
+                   ctx.shadowBlur = 15;
+                   ctx.fillStyle = '#fff';
+                   ctx.beginPath();
+                   ctx.arc(px, py, 6, 0, Math.PI*2);
+                   ctx.fill();
+                   ctx.shadowBlur = 0;
+
+                   // Label
+                   ctx.fillStyle = '#fff';
+                   ctx.font = '10px Noto Sans SC';
+                   ctx.fillText(city.name, px, py - 12);
+               });
+           },
+
+           // --- UTILS ---
+           updateUI: function() {
+               document.getElementById('resGold').innerText = this.nation.gold;
+               document.getElementById('resPop').innerText = this.nation.pop;
+               document.getElementById('resArmy').innerText = this.nation.army;
+               document.getElementById('resHappy').innerText = this.nation.happiness;
+               document.getElementById('turnCount').innerText = this.turn;
+               
+               // Header Info
+               document.getElementById('displayNationName').innerText = this.nation.name;
+               document.getElementById('displayCapitalName').innerText = "首都: " + this.nation.capital;
+               document.getElementById('flagDisplay').style.backgroundColor = this.nation.color;
+           },
+
+           log: function(msg, type='info') {
+               const logEl = document.getElementById('logContent');
+               const div = document.createElement('div');
+               const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+               
+               let colorClass = 'text-slate-300';
+               if(type === 'error') colorClass = 'text-red-400';
+               if(type === 'success') colorClass = 'text-green-400';
+               
+               div.className = `border-l-2 pl-2 py-1 animate-pulse ${type === 'error' ? 'border-red-500' : (type === 'success' ? 'border-green-500' : 'border-blue-500')}`;
+               div.innerHTML = `<span class="text-slate-600 text-[10px] mr-2">[${time}]</span><span class="${colorClass}">${msg}</span>`;
+               
+               logEl.prepend(div);
+               // Keep log short
+               if(logEl.children.length > 20) logEl.lastChild.remove();
+           },
+
+           showToast: function(msg) {
+               const container = document.getElementById('toastContainer');
+               const el = document.createElement('div');
+               el.className = 'bg-slate-800/90 border border-cyan-500/50 text-cyan-100 px-4 py-2 rounded shadow-lg text-sm font-bold backdrop-blur-sm transform transition-all duration-500 translate-y-[-20px] opacity-0';
+               el.innerText = msg;
+               container.appendChild(el);
+               
+               // Animate in
+               requestAnimationFrame(() => {
+                   el.classList.remove('translate-y-[-20px]', 'opacity-0');
+               });
+
+               // Remove
+               setTimeout(() => {
+                   el.classList.add('opacity-0', 'translate-y-[-20px]');
+                   setTimeout(() => el.remove(), 500);
+               }, 2000);
+           },
+
+           createParticles: function(x, y, color) {
+               // Simple visual effect using DOM elements for simplicity in this context
+               // In a full canvas engine, we'd draw these in the loop
+               for(let i=0; i<5; i++) {
+                   const p = document.createElement('div');
+                   p.className = 'absolute w-2 h-2 rounded-full pointer-events-none z-20';
+                   p.style.backgroundColor = color;
+                   p.style.left = x + 'px';
+                   p.style.top = y + 'px';
+                   p.style.transition = 'all 1s ease-out';
+                   document.body.appendChild(p);
+                   
+                   setTimeout(() => {
+                       p.style.transform = `translate(${(Math.random()-0.5)*100}px, ${(Math.random()-0.5)*100}px) scale(0)`;
+                       p.style.opacity = 0;
+                   }, 10);
+                   
+                   setTimeout(() => p.remove(), 1000);
+               }
+           },
+
+           cheat: function(type) {
+               if(type === 'gold') this.nation.gold += 1000;
+               if(type === 'army') this.nation.army += 100;
+               if(type === 'happy') this.nation.happiness = 100;
+               if(type === 'win') {
+                   // Fill entire map
+                   for(let y=0; y<ROWS; y++) {
+                       for(let x=0; x<COLS; x++) {
+                           this.map[y][x] = 1;
+                       }
+                   }
+                   this.log("作弊码激活：世界征服完成。", 'success');
+               }
+               this.updateUI();
+               playSound('coin');
+           },
+           
+           toggleLog: function() {
+               // Mobile toggle logic if needed, currently sidebar is fixed
+           }
+       };
+
+       // --- GLOBAL FUNCTIONS ---
+
+       function selectColor(color) {
+           game.selectedColor = color;
+           document.getElementById('selectedColor').value = color;
+           document.querySelectorAll('.color-btn').forEach(btn => {
+               btn.classList.remove('ring-white');
+               btn.classList.add('ring-transparent');
+               if(btn.dataset.color === color) {
+                   btn.classList.remove('ring-transparent');
+                   btn.classList.add('ring-white');
+               }
+           });
+       }
+
+       function startGame() {
+           initAudio();
+           const name = document.getElementById('inputNationName').value || "无名帝国";
+           const capital = document.getElementById('inputCapitalName').value || "首都";
+           const color = document.getElementById('selectedColor').value;
+           
+           // Hide Overlay
+           const overlay = document.getElementById('startOverlay');
+           overlay.style.opacity = 0;
+           setTimeout(() => overlay.remove(), 500);
+
+           // Show Game
+           const ui = document.getElementById('gameUI');
+           ui.classList.remove('pointer-events-none');
+           ui.style.opacity = 1;
+
+           game.start(name, capital, color);
+       }
+
+       function toggleDevMenu() {
+           const menu = document.getElementById('devMenu');
+           menu.classList.toggle('hidden');
+       }
+
+       // Initialize Canvas on Load
+       window.onload = () => game.init();
+
+   </script>
+</body>
+</html>

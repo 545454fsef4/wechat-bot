@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>微信机器人 · 实时监控</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #08080a;
+    --card: #0e0e12;
+    --card-hover: #16161d;
+    --border: #1c1c22;
+    --text: #e4e4e7;
+    --text-dim: #71717a;
+    --text-muted: #4a4a52;
+    --green: #22c55e;
+    --green-glow: rgba(34,197,94,0.12);
+    --red: #ef4444;
+    --red-glow: rgba(239,68,68,0.12);
+    --amber: #f59e0b;
+    --blue: #3b82f6;
+    --blue-glow: rgba(59,130,246,0.1);
+    --purple: #a855f7;
+    --cyan: #06b6d4;
+    --radius: 14px;
+    --radius-sm: 8px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { font-size:15px; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body::before {
+    content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background: radial-gradient(ellipse 80% 50% at 50% 0%, rgba(59,130,246,0.03) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 100%, rgba(34,197,94,0.02) 0%, transparent 50%);
+  }
+
+  /* Header */
+  header {
+    position:sticky; top:0; z-index:100;
+    backdrop-filter: blur(20px) saturate(180%);
+    background: rgba(8,8,10,0.78);
+    border-bottom:1px solid var(--border);
+    padding:14px 28px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px;
+  }
+  .header-brand { display:flex; align-items:center; gap:12px; }
+  .header-logo {
+    width:38px; height:38px;
+    background: linear-gradient(135deg, #22c55e, #059669);
+    border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:20px;
+    box-shadow: 0 4px 20px rgba(34,197,94,0.2);
+  }
+  .header-title { font-size:1rem; font-weight:600; letter-spacing:-0.01em; line-height:1.2; }
+  .header-subtitle { font-size:0.72rem; color:var(--text-dim); }
+  .header-right { display:flex; align-items:center; gap:14px; }
+
+  .status-pill {
+    display:flex; align-items:center; gap:8px;
+    padding:7px 16px; border-radius:999px;
+    font-size:0.82rem; font-weight:500; transition:0.3s ease;
+  }
+  .status-pill.online { background:var(--green-glow); color:var(--green); border:1px solid rgba(34,197,94,0.18); }
+  .status-pill.offline { background:var(--red-glow); color:var(--red); border:1px solid rgba(239,68,68,0.18); }
+  .status-dot { width:7px; height:7px; border-radius:50%; }
+  .status-dot.online { background:var(--green); box-shadow:0 0 10px var(--green); animation:pulse 1.5s ease-in-out infinite; }
+  .status-dot.offline { background:var(--red); animation:none; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+
+  .tick-counter {
+    font-family:'JetBrains Mono',monospace; font-size:0.7rem; font-weight:500;
+    padding:4px 10px; border-radius:999px;
+    background:rgba(59,130,246,0.08); color:var(--blue);
+    border:1px solid rgba(59,130,246,0.15);
+  }
+
+  /* Layout */
+  main {
+    position:relative; z-index:1;
+    max-width:1500px; margin:0 auto; padding:24px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:auto auto auto;
+    gap:18px;
+  }
+  @media(max-width:960px){ main{grid-template-columns:1fr;padding:12px} }
+
+  .card {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:22px;
+    transition:border-color 0.3s;
+  }
+  .card:hover { border-color:#2a2a32; }
+  .card.full { grid-column:1/-1; }
+  .card-header {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .card-title {
+    font-size:0.78rem; font-weight:600; text-transform:uppercase;
+    letter-spacing:0.06em; color:var(--text-dim);
+  }
+
+  /* Metrics */
+  .metrics { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+  .metrics-4 { grid-template-columns:repeat(4,1fr); }
+  .metric {
+    background:var(--card-hover); border-radius:var(--radius-sm);
+    padding:14px; border:1px solid transparent; transition:0.2s;
+  }
+  .metric:hover { border-color:var(--border); }
+  .metric-label { font-size:0.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px; }
+  .metric-value {
+    font-family:'JetBrains Mono','SF Mono',monospace;
+    font-size:1.2rem; font-weight:500; color:var(--text);
+    transition:color 0.15s;
+  }
+  .metric-value.green { color:var(--green); }
+  .metric-value.red { color:var(--red); }
+  .metric-value.amber { color:var(--amber); }
+  .metric-value.blue { color:var(--blue); }
+  .metric-sub { font-size:0.66rem; color:var(--text-muted); margin-top:2px; }
+  .metric-delta {
+    font-family:'JetBrains Mono',monospace; font-size:0.7rem;
+    padding:1px 6px; border-radius:4px; margin-left:6px;
+  }
+  .metric-delta.up { background:rgba(239,68,68,0.1); color:var(--red); }
+  .metric-delta.down { background:rgba(34,197,94,0.1); color:var(--green); }
+
+  /* Canvas sparkline */
+  .sparkline-wrap {
+    position:relative; margin-top:8px;
+    background:var(--bg); border-radius:var(--radius-sm);
+    overflow:hidden; border:1px solid var(--border);
+  }
+  .sparkline-wrap canvas { display:block; width:100%; height:70px; }
+
+  /* == Chat feed == */
+  .chat-feed {
+    max-height: 420px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 6px;
+  }
+  .chat-feed::-webkit-scrollbar { width: 4px; }
+  .chat-feed::-webkit-scrollbar-track { background: transparent; }
+  .chat-feed::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+
+  .chat-msg {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    transition: var(--transition);
+    animation: slideIn 0.25s ease-out;
+  }
+  .chat-msg:hover { background: var(--card-hover); }
+  .chat-msg.self { background: rgba(59,130,246,0.06); border-left: 2px solid var(--blue); }
+  .chat-msg.other { background: rgba(34,197,94,0.05); border-left: 2px solid var(--green); }
+  .chat-msg.system { background: rgba(245,158,11,0.05); border-left: 2px solid var(--amber); }
+  .chat-msg-avatar {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 600;
+    flex-shrink: 0;
+  }
+  .chat-msg.self .chat-msg-avatar { background: rgba(59,130,246,0.2); color: var(--blue); }
+  .chat-msg.other .chat-msg-avatar { background: rgba(34,197,94,0.2); color: var(--green); }
+  .chat-msg.system .chat-msg-avatar { background: rgba(245,158,11,0.2); color: var(--amber); }
+  .chat-msg-body { flex: 1; min-width: 0; }
+  .chat-msg-meta {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 3px;
+  }
+  .chat-msg-name { font-weight: 600; font-size: 0.78rem; }
+  .chat-msg.self .chat-msg-name { color: var(--blue); }
+  .chat-msg.other .chat-msg-name { color: var(--green); }
+  .chat-msg-time { font-size: 0.62rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+  .chat-msg-text { color: var(--text); word-break: break-word; line-height: 1.45; }
+  .chat-msg-text .sticker { font-size: 1.5rem; }
+  .chat-msg-badge {
+    font-size: 0.58rem; padding: 1px 6px; border-radius: 4px;
+    font-weight: 500; text-transform: uppercase;
+  }
+  .chat-msg-badge.text { background: rgba(59,130,246,0.15); color: var(--blue); }
+  .chat-msg-badge.image { background: rgba(168,85,247,0.15); color: var(--purple); }
+  .chat-msg-badge.url { background: rgba(6,182,212,0.15); color: var(--cyan); }
+
+  /* == Log feed == */
+  .log-feed {
+    max-height:320px; overflow-y:auto; scroll-behavior:smooth;
+  }
+  .log-feed::-webkit-scrollbar { width:3px; }
+  .log-feed::-webkit-scrollbar-track { background:transparent; }
+  .log-feed::-webkit-scrollbar-thumb { background:#2a2a32; border-radius:3px; }
+
+  .log-entry {
+    display:flex; gap:8px; padding:6px 10px; border-radius:6px;
+    font-size:0.75rem; font-family:'JetBrains Mono',monospace;
+    animation:slideIn 0.25s ease-out;
+  }
+  .log-entry:hover { background:var(--card-hover); }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-6px)} to{opacity:1;transform:translateX(0)} }
+  .log-time { color:var(--text-muted); font-size:0.68rem; white-space:nowrap; min-width:68px; }
+  .log-level { font-size:0.6rem; font-weight:600; text-transform:uppercase; min-width:36px; padding-top:2px; }
+  .log-level.info{color:var(--blue)} .log-level.warn{color:var(--amber)}
+  .log-level.error{color:var(--red)} .log-level.success{color:var(--green)}
+  .log-source {
+    font-size:0.6rem; color:var(--text-muted);
+    background:var(--bg); padding:0 5px; border-radius:3px;
+    min-width:42px; text-align:center; line-height:1.6;
+  }
+  .log-msg { flex:1; word-break:break-word; }
+
+  /* Send */
+  .send-form { display:flex; flex-direction:column; gap:10px; }
+  .input-row { display:flex; gap:10px; }
+  .input-row input {
+    flex:1; background:var(--bg); border:1px solid var(--border);
+    border-radius:var(--radius-sm); padding:10px 14px;
+    color:var(--text); font-size:0.82rem; font-family:inherit;
+    outline:none; transition:0.2s;
+  }
+  .input-row input:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-glow); }
+  .input-row input::placeholder { color:var(--text-muted); }
+  .btn {
+    display:inline-flex; align-items:center; gap:6px;
+    padding:9px 18px; border-radius:var(--radius-sm);
+    font-size:0.82rem; font-weight:500; font-family:inherit;
+    cursor:pointer; border:1px solid transparent; transition:0.2s;
+    white-space:nowrap;
+  }
+  .btn-primary { background:var(--blue); color:#fff; }
+  .btn-primary:hover { background:#2563eb; }
+  .btn-primary:disabled { opacity:0.45; cursor:not-allowed; }
+  .btn-ghost {
+    background:transparent; border-color:var(--border);
+    color:var(--text-dim); padding:6px 12px; font-size:0.7rem;
+  }
+  .btn-ghost:hover { background:var(--card-hover); color:var(--text); }
+  .quick-actions { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+  .quick-contact {
+    font-size:0.72rem; padding:4px 10px; border-radius:999px;
+    background:var(--card-hover); border:1px solid var(--border);
+    color:var(--text-dim); cursor:pointer; transition:0.2s;
+  }
+  .quick-contact:hover { background:var(--blue-glow); border-color:rgba(59,130,246,0.25); color:var(--blue); }
+  .send-status {
+    font-size:0.75rem; padding:6px 12px; border-radius:8px; min-height:20px;
+  }
+  .send-status.ok { background:var(--green-glow); color:var(--green); }
+  .send-status.err { background:var(--red-glow); color:var(--red); }
+
+  /* Token display */
+  .token-bar {
+    display:flex; gap:2px; height:24px; margin-top:8px;
+    border-radius:4px; overflow:hidden; background:var(--bg);
+  }
+  .token-bar .prompt { background:var(--blue); }
+  .token-bar .completion { background:var(--green); }
+
+  /* WS indicator */
+  .ws-indicator {
+    position:fixed; bottom:16px; right:16px; z-index:200;
+    padding:6px 14px; border-radius:999px;
+    font-size:0.7rem; font-weight:500;
+    backdrop-filter:blur(12px); transition:all 0.3s;
+  }
+  .ws-indicator.connected { background:rgba(34,197,94,0.12); color:var(--green); border:1px solid rgba(34,197,94,0.15); }
+  .ws-indicator.disconnected { background:rgba(239,68,68,0.12); color:var(--red); border:1px solid rgba(239,68,68,0.15); }
+
+  /* Footer */
+  footer {
+    text-align:center; padding:14px; font-size:0.68rem;
+    color:var(--text-muted); border-top:1px solid var(--border); margin-top:12px;
+  }
+  footer span { color:var(--text-dim); }
+  .empty-state { display:flex; flex-direction:column; align-items:center; padding:32px; color:var(--text-muted); gap:6px; }
+  .empty-state .icon { font-size:1.8rem; opacity:0.3; }
+
+  /* Responsive metrics */
+  @media(max-width:800px){ .metrics-4{grid-template-columns:repeat(2,1fr)} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-brand">
+    <div class="header-logo">💬</div>
+    <div>
+      <div class="header-title">微信机器人监控</div>
+      <div class="header-subtitle">WeChat Bot · Millisecond Dashboard</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="tick-counter" id="tickCounter">⚡ 0 ms</div>
+    <div id="statusPill" class="status-pill offline">
+      <span id="statusDot" class="status-dot offline"></span>
+      <span id="statusText">检查中</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <!-- 核心指标 -->
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⚡ 实时状态</span>
+      <span style="font-size:0.65rem;color:var(--text-muted);" id="pingLabel">PING —</span>
+    </div>
+    <div class="metrics metrics-4">
+      <div class="metric">
+        <div class="metric-label">API 延迟</div>
+        <div class="metric-value" id="mApiTime">—</div>
+        <div class="metric-sub" id="mApiSub"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">运行时长</div>
+        <div class="metric-value" id="mUptime">—</div>
+        <div class="metric-sub">bot 持续在线</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">进程 PID</div>
+        <div class="metric-value" id="mPid">—</div>
+        <div class="metric-sub" id="mMemSub">内存 —</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">今日请求</div>
+        <div class="metric-value" id="mRequests">—</div>
+        <div class="metric-sub" id="mTokenSub">token —</div>
+      </div>
+    </div>
+    <div class="sparkline-wrap">
+      <canvas id="sparklineCanvas"></canvas>
+    </div>
+  </div>
+
+  <!-- 系统 & 模型 -->
+  <div class="card">
+    <div class="card-header"><span class="card-title">🔧 系统 & 模型</span></div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">文字模型</div>
+        <div class="metric-value" style="font-size:0.88rem;" id="mTextModel">—</div>
+        <div class="metric-sub" id="mTextProv"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">视觉模型</div>
+        <div class="metric-value" style="font-size:0.88rem;" id="mVisionModel">—</div>
+        <div class="metric-sub" id="mVisionProv"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">服务类型</div>
+        <div class="metric-value" style="font-size:0.88rem;" id="mServiceType">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">监控已运行</div>
+        <div class="metric-value" style="font-size:0.88rem;" id="mMonUptime">—</div>
+        <div class="metric-sub" id="mMemFree"></div>
+      </div>
+    </div>
+    <div class="token-bar" id="tokenBar" style="margin-top:14px;"></div>
+    <div style="display:flex;justify-content:space-between;margin-top:4px;font-size:0.62rem;color:var(--text-muted);">
+      <span>🔵 Prompt <b id="tokPrompt">0</b></span>
+      <span>🟢 Completion <b id="tokCompletion">0</b></span>
+      <span>总计 <b id="tokTotal">0</b></span>
+    </div>
+  </div>
+
+  <!-- 实时聊天消息 -->
+  <div class="card full">
+    <div class="card-header">
+      <span class="card-title">💬 实时聊天消息</span>
+      <span style="font-size:0.68rem;color:var(--text-muted);" id="msgCount">0 条</span>
+    </div>
+    <div class="chat-feed" id="chatFeed">
+      <div class="empty-state"><div class="icon">💬</div><div>等待消息...</div></div>
+    </div>
+  </div>
+
+  <!-- 实时日志 -->
+  <div class="card full">
+    <div class="card-header">
+      <span class="card-title">📋 实时日志</span>
+      <button class="btn btn-ghost" onclick="clearLogs()">清空</button>
+    </div>
+    <div class="log-feed" id="logFeed">
+      <div class="empty-state"><div class="icon">📡</div><div>等待日志...</div></div>
+    </div>
+  </div>
+
+  <!-- 发送测试 -->
+  <div class="card full">
+    <div class="card-header"><span class="card-title">📤 发送测试消息</span></div>
+    <div class="send-form">
+      <div class="input-row">
+        <input type="text" id="sendContact" placeholder="联系人 (如: 刘栩丞, freely.)" list="contactList">
+        <datalist id="contactList">
+          <option value="刘栩丞"><option value="freely."><option value="石梦瑶"><option value="ʎʇuǝɹɐɟ">
+        </datalist>
+        <input type="text" id="sendMessage" placeholder="消息内容... Ctrl+Enter 发送" style="flex:2;">
+        <button class="btn btn-primary" id="btnSend" onclick="sendMessage()">🚀 发送</button>
+      </div>
+      <div class="quick-actions">
+        <span style="font-size:0.68rem;color:var(--text-muted);line-height:2.2;">快捷:</span>
+        <span class="quick-contact" onclick="setContact('刘栩丞')">刘栩丞 🕸</span>
+        <span class="quick-contact" onclick="setContact('freely.')">freely. 💫</span>
+        <span class="quick-contact" onclick="setContact('石梦瑶')">石梦瑶</span>
+      </div>
+      <div id="sendStatus" class="send-status" style="display:none;"></div>
+    </div>
+  </div>
+</main>
+
+<footer>监控服务 <span id="footerUptime">—</span> · 100ms 高频 ping · Canvas 实时渲染</footer>
+<div id="wsIndicator" class="ws-indicator disconnected">⚠️ 离线</div>
+
+<script>
+// ============ Canvas Sparkline (毫秒级渲染) ============
+const sparkCanvas = document.getElementById('sparklineCanvas');
+const sparkCtx = sparkCanvas.getContext('2d');
+let sparkData = [];     // {ms, t}
+const SPARK_WINDOW = 6000; // 显示最近 6 秒
+let sparkAnimFrame = null;
+
+function resizeSparkline() {
+  const wrap = sparkCanvas.parentElement;
+  const dpr = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth;
+  const h = 70;
+  sparkCanvas.width = w * dpr;
+  sparkCanvas.height = h * dpr;
+  sparkCanvas.style.width = w + 'px';
+  sparkCanvas.style.height = h + 'px';
+  sparkCtx.scale(dpr, dpr);
+  return { w, h };
+}
+
+function drawSparkline() {
+  const { w, h } = resizeSparkline();
+  const ctx = sparkCtx;
+  const now = Date.now();
+
+  // 清除
+  ctx.clearRect(0, 0, w, h);
+
+  if (sparkData.length < 2) return;
+
+  // 裁剪到窗口内
+  const cutoff = now - SPARK_WINDOW;
+  sparkData = sparkData.filter(d => d.t > cutoff);
+
+  if (sparkData.length < 2) return;
+
+  // 坐标映射
+  const tMin = sparkData[0].t;
+  const tMax = sparkData[sparkData.length - 1].t;
+  const tRange = Math.max(tMax - tMin, 1);
+
+  const vals = sparkData.map(d => d.ms);
+  const vMax = Math.max(...vals, 20);
+  const vMin = 0;
+
+  const pad = { top: 10, right: 4, bottom: 10, left: 4 };
+  const pw = w - pad.left - pad.right;
+  const ph = h - pad.top - pad.bottom;
+
+  // 网格线
+  ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+  ctx.lineWidth = 0.5;
+  for (let i = 1; i < 4; i++) {
+    const y = pad.top + (ph * i) / 4;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
+  }
+
+  // 渐变填充
+  const grad = ctx.createLinearGradient(0, pad.top, 0, h - pad.bottom);
+  grad.addColorStop(0, 'rgba(34,197,94,0.25)');
+  grad.addColorStop(0.6, 'rgba(34,197,94,0.05)');
+  grad.addColorStop(1, 'rgba(34,197,94,0)');
+
+  // 路径
+  ctx.beginPath();
+  let firstPoint = true;
+  for (let i = 0; i < sparkData.length; i++) {
+    const x = pad.left + ((sparkData[i].t - tMin) / tRange) * pw;
+    const y = pad.top + (1 - (sparkData[i].ms - vMin) / (vMax - vMin)) * ph;
+    if (firstPoint) { ctx.moveTo(x, y); firstPoint = false; }
+    else ctx.lineTo(x, y);
+  }
+  // 闭合填充区域
+  const lastX = pad.left + ((sparkData[sparkData.length - 1].t - tMin) / tRange) * pw;
+  ctx.lineTo(lastX, h - pad.bottom);
+  ctx.lineTo(pad.left + ((sparkData[0].t - tMin) / tRange) * pw, h - pad.bottom);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 线条
+  ctx.beginPath();
+  firstPoint = true;
+  for (let i = 0; i < sparkData.length; i++) {
+    const x = pad.left + ((sparkData[i].t - tMin) / tRange) * pw;
+    const y = pad.top + (1 - (sparkData[i].ms - vMin) / (vMax - vMin)) * ph;
+    if (firstPoint) { ctx.moveTo(x, y); firstPoint = false; }
+    else ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = 'rgba(34,197,94,0.8)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // Y轴标签
+  ctx.fillStyle = 'rgba(255,255,255,0.25)';
+  ctx.font = '9px "JetBrains Mono", monospace';
+  ctx.textAlign = 'right';
+  ctx.fillText(`${Math.round(vMax)}ms`, w - pad.right - 2, pad.top + 10);
+  ctx.fillText('0ms', w - pad.right - 2, h - pad.bottom - 2);
+}
+
+function sparklineLoop() {
+  drawSparkline();
+  sparkAnimFrame = requestAnimationFrame(sparklineLoop);
+}
+
+// ============ WebSocket ============
+const WS_URL = `ws://${location.host}`;
+let ws, reconnectTimer;
+let lastResponseTime = null;
+let prevResponseTime = null;
+
+function connect() {
+  if (ws && ws.readyState === WebSocket.OPEN) return;
+  ws = new WebSocket(WS_URL);
+
+  ws.onopen = () => {
+    document.getElementById('wsIndicator').className = 'ws-indicator connected';
+    document.getElementById('wsIndicator').textContent = '● 实时 (100ms)';
+    if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data);
+      switch (msg.type) {
+        case 'full':
+          updateFull(msg);
+          break;
+        case 'status':
+          updateStatus(msg.data);
+          break;
+        case 'ping':
+          updatePing(msg.data);
+          break;
+        case 'messages':
+          updateChatMessages(msg.data);
+          break;
+      }
+    } catch(e) {}
+  };
+
+  ws.onclose = () => {
+    document.getElementById('wsIndicator').className = 'ws-indicator disconnected';
+    document.getElementById('wsIndicator').textContent = '⚠️ 断开';
+    reconnectTimer = setTimeout(connect, 2000);
+  };
+  ws.onerror = () => ws.close();
+}
+
+// ============ Update handlers ============
+function updateFull(msg) {
+  updateStatus(msg.data);
+  updateLogs(msg.logs, true);
+  if (msg.messages) updateChatMessages(msg.messages);
+  if (msg.data && msg.data.chatMessages) updateChatMessages(msg.data.chatMessages);
+}
+
+function updateStatus(data) {
+  const pill = document.getElementById('statusPill');
+  const dot = document.getElementById('statusDot');
+  const text = document.getElementById('statusText');
+
+  if (data.bot.online) {
+    pill.className = 'status-pill online';
+    dot.className = 'status-dot online';
+    text.textContent = '在线';
+  } else {
+    pill.className = 'status-pill offline';
+    dot.className = 'status-dot offline';
+    text.textContent = '离线';
+  }
+
+  // 指标
+  const apiTime = data.api.responseTime != null ? data.api.responseTime : null;
+  const apiEl = document.getElementById('mApiTime');
+  if (apiTime !== null) {
+    apiEl.textContent = apiTime + 'ms';
+    apiEl.className = 'metric-value ' + (apiTime < 100 ? 'green' : apiTime < 300 ? 'amber' : 'red');
+
+    // 变化趋势
+    if (lastResponseTime !== null && prevResponseTime !== null) {
+      const sub = document.getElementById('mApiSub');
+      const diff = apiTime - prevResponseTime;
+      if (diff > 0) sub.innerHTML = `↑ <span class="metric-delta up">+${diff}ms</span>`;
+      else if (diff < 0) sub.innerHTML = `↓ <span class="metric-delta down">${diff}ms</span>`;
+      else sub.textContent = '→ 持平';
+    }
+    prevResponseTime = lastResponseTime;
+    lastResponseTime = apiTime;
+  } else {
+    apiEl.textContent = '—';
+    apiEl.className = 'metric-value red';
+  }
+
+  document.getElementById('mUptime').textContent = data.bot.uptime || '—';
+  document.getElementById('mUptime').className = 'metric-value ' + (data.bot.online ? 'green' : 'red');
+
+  document.getElementById('mPid').textContent = data.bot.pid || '—';
+  document.getElementById('mPid').className = 'metric-value ' + (data.bot.online ? '' : 'red');
+  document.getElementById('mMemSub').textContent = '内存 ' + (data.bot.memory || '—');
+
+  // Token
+  const tokens = data.tokens || { today: { prompt:0, completion:0, total:0 }, requests:0 };
+  document.getElementById('mRequests').textContent = tokens.requests || 0;
+  document.getElementById('mTokenSub').textContent = `今日 ${(tokens.today?.total || 0).toLocaleString()} token`;
+
+  // Token bar
+  const tTotal = tokens.today?.total || 1;
+  const pPct = ((tokens.today?.prompt || 0) / Math.max(tTotal, 1) * 100).toFixed(1);
+  const cPct = ((tokens.today?.completion || 0) / Math.max(tTotal, 1) * 100).toFixed(1);
+  document.getElementById('tokenBar').innerHTML = `
+    <div class="prompt" style="width:${pPct}%"></div>
+    <div class="completion" style="width:${cPct}%"></div>
+  `;
+  document.getElementById('tokPrompt').textContent = (tokens.today?.prompt || 0).toLocaleString();
+  document.getElementById('tokCompletion').textContent = (tokens.today?.completion || 0).toLocaleString();
+  document.getElementById('tokTotal').textContent = (tokens.today?.total || 0).toLocaleString();
+
+  // 模型
+  if (data.models) {
+    document.getElementById('mTextModel').textContent = data.models.text?.name || '—';
+    document.getElementById('mTextProv').textContent = data.models.text?.provider || '';
+    document.getElementById('mVisionModel').textContent = data.models.vision?.name || '—';
+    document.getElementById('mVisionProv').textContent = data.models.vision?.provider || '';
+    document.getElementById('mServiceType').textContent = data.models.text?.serviceType || '—';
+  }
+
+  // 系统
+  const mu = data.system.monitorUptime || 0;
+  document.getElementById('mMonUptime').textContent = formatUptime(mu);
+  document.getElementById('mMemFree').textContent = '空闲 ' + (data.system.freeMem || '—');
+  document.getElementById('footerUptime').textContent = '已运行 ' + formatUptime(mu);
+}
+
+function updatePing(data) {
+  // 高频 ping 数据 — 轻量更新
+  const el = document.getElementById('mApiTime');
+  const sub = document.getElementById('mApiSub');
+  const rt = data.responseTime;
+
+  if (rt != null) {
+    el.textContent = rt + 'ms';
+    el.className = 'metric-value ' + (rt < 100 ? 'green' : rt < 300 ? 'amber' : 'red');
+  }
+
+  document.getElementById('pingLabel').textContent = `PING #${data.pingCount || 0}`;
+  document.getElementById('mMemFree').textContent = '空闲 ' + (data.freeMem || '—');
+  document.getElementById('mMonUptime').textContent = formatUptime(data.monitorUptime || 0);
+  document.getElementById('footerUptime').textContent = '已运行 ' + formatUptime(data.monitorUptime || 0);
+
+  // 更新 tick counter
+  document.getElementById('tickCounter').textContent = `⚡ ${rt || '—'} ms`;
+
+  // Canvas sparkline data
+  if (data.responseHistory && data.responseHistory.length > 0) {
+    sparkData = data.responseHistory.slice(-300); // 保留最近 300 点
+  }
+}
+
+// ============ Chat messages ============
+const renderedMsgIds = new Set();
+const MAX_CHAT_DISPLAY = 100;
+
+function updateChatMessages(messages) {
+  if (!messages || !messages.length) return;
+  const feed = document.getElementById('chatFeed');
+  const empty = feed.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  let added = 0;
+  // Messages come newest-first from server, reverse to show newest at top (column-reverse)
+  for (const msg of [...messages].reverse()) {
+    if (!msg.id || renderedMsgIds.has(msg.id)) continue;
+    renderedMsgIds.add(msg.id);
+
+    const isSelf = msg.self;
+    const isText = msg.isText && msg.text;
+    const isSystem = msg.typeName === 'Recalled' || msg.typeName === 'System';
+    const cssClass = isSystem ? 'system' : isSelf ? 'self' : 'other';
+
+    const displayName = msg.talkerAlias || msg.talkerName || '未知';
+    const initial = displayName.charAt(0);
+    const time = new Date(msg.timestamp);
+    const timeStr = time.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit'});
+
+    let typeBadge = '';
+    if (msg.typeName === 'Text') typeBadge = '<span class="chat-msg-badge text">文字</span>';
+    else if (msg.typeName === 'Image' || msg.typeName === 'Video') typeBadge = '<span class="chat-msg-badge image">' + msg.typeName + '</span>';
+    else if (msg.typeName === 'Url' || msg.typeName === 'Link') typeBadge = '<span class="chat-msg-badge url">链接</span>';
+
+    let content = '';
+    if (isText) {
+      content = esc(msg.text);
+    } else if (msg.typeName === 'Recalled') {
+      content = '<em style="color:var(--text-muted);">消息已撤回</em>';
+    } else if (msg.typeName === 'Image') {
+      content = '📷 图片';
+    } else if (msg.typeName === 'Video') {
+      content = '🎬 视频';
+    } else if (msg.typeName === 'Url') {
+      content = '🔗 链接消息';
+    } else {
+      content = '📩 ' + (msg.typeName || '消息');
+    }
+
+    const div = document.createElement('div');
+    div.className = 'chat-msg ' + cssClass;
+    div.innerHTML =
+      '<div class="chat-msg-avatar">' + initial + '</div>' +
+      '<div class="chat-msg-body">' +
+        '<div class="chat-msg-meta">' +
+          '<span class="chat-msg-name">' + esc(displayName) + '</span>' +
+          typeBadge +
+          '<span class="chat-msg-time">' + timeStr + '</span>' +
+        '</div>' +
+        '<div class="chat-msg-text">' + content + '</div>' +
+      '</div>';
+    feed.insertBefore(div, feed.firstChild);
+    added++;
+  }
+
+  if (added > 0) {
+    // Trim old messages
+    while (feed.children.length > MAX_CHAT_DISPLAY) {
+      feed.removeChild(feed.lastChild);
+    }
+    document.getElementById('msgCount').textContent = feed.children.length + ' 条';
+  }
+}
+
+function updateLogs(newLogs, replace) {
+  const feed = document.getElementById('logFeed');
+  if (replace) feed.innerHTML = '';
+
+  if (newLogs.length === 0 && feed.children.length === 0) {
+    feed.innerHTML = '<div class="empty-state"><div class="icon">📡</div><div>暂无日志</div></div>';
+    return;
+  }
+
+  const empty = feed.querySelector('.empty-state');
+  if (empty) empty.remove();
+
+  newLogs.forEach(log => {
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    const t = new Date(log.time);
+    const ts = t.toLocaleTimeString('zh-CN', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    div.innerHTML = `<span class="log-time">${ts}</span>`
+      + `<span class="log-level ${log.level}">${log.level}</span>`
+      + `<span class="log-source">${log.source}</span>`
+      + `<span class="log-msg">${esc(log.message)}</span>`;
+    feed.insertBefore(div, feed.firstChild);
+  });
+
+  while (feed.children.length > 200) feed.removeChild(feed.lastChild);
+}
+
+// ============ Send ============
+async function sendMessage() {
+  const contact = document.getElementById('sendContact').value.trim();
+  const message = document.getElementById('sendMessage').value.trim();
+  const statusEl = document.getElementById('sendStatus');
+  const btn = document.getElementById('btnSend');
+  if (!contact || !message) {
+    statusEl.style.display='block'; statusEl.className='send-status err';
+    statusEl.textContent='请填写联系人和消息'; return;
+  }
+  btn.disabled=true; btn.textContent='发送中...'; statusEl.style.display='none';
+  try {
+    const res = await fetch('/api/send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contact,message})
+    });
+    const data = await res.json();
+    statusEl.style.display='block';
+    if (data.ok) { statusEl.className='send-status ok'; statusEl.textContent=`✅ 已发送给 ${data.target}`; document.getElementById('sendMessage').value=''; }
+    else { statusEl.className='send-status err'; statusEl.textContent=`❌ ${data.error||'未知错误'}`; }
+  } catch(e) {
+    statusEl.style.display='block'; statusEl.className='send-status err';
+    statusEl.textContent=`❌ 网络错误: ${e.message}`;
+  } finally { btn.disabled=false; btn.textContent='🚀 发送'; }
+}
+
+function setContact(name) { document.getElementById('sendContact').value=name; document.getElementById('sendMessage').focus(); }
+function clearLogs() { document.getElementById('logFeed').innerHTML='<div class="empty-state"><div class="icon">📡</div><div>日志已清空</div></div>'; }
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function formatUptime(sec) { const h=Math.floor(sec/3600); const m=Math.floor((sec%3600)/60); const s=Math.floor(sec%60); return `${h}h ${m}m ${s}s`; }
+
+// Ctrl+Enter 发送
+document.addEventListener('keydown', e => { if (e.key==='Enter' && e.ctrlKey) sendMessage(); });
+
+// ============ Init ============
+connect();
+sparklineLoop();
+window.addEventListener('resize', drawSparkline);
+
+// REST fallback for full state
+setInterval(() => {
+  if (!ws || ws.readyState !== WebSocket.OPEN) {
+    fetch('/api/status').then(r=>r.json()).then(d=>{
+      updateStatus(d);
+      if (d.chatMessages) updateChatMessages(d.chatMessages);
+    }).catch(()=>{});
+    fetch('/api/logs?limit=30').then(r=>r.json()).then(d=>updateLogs(d,true)).catch(()=>{});
+  } else {
+    // Even with WS, poll for new chat messages every 2s as backup
+    fetch('/api/status').then(r=>r.json()).then(d=>{
+      if (d.chatMessages) updateChatMessages(d.chatMessages);
+    }).catch(()=>{});
+  }
+}, 2000);
+</script>
+</body>
+</html>

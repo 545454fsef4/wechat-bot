@@ -1,0 +1,30 @@
+[launcher] 启动微信机器人...
+[bot-api] HTTP API listening on http://127.0.0.1:3001/send
+Start to log in wechat...
+Contact<ʎʇuǝɹɐɟㅤ> has logged in
+
+[launcher] ✅ 微信登录成功！机器人持续运行中...
+[launcher] 📡 HTTP API: http://127.0.0.1:3001/send
+[launcher] ⏰ 每小时定时消息任务已就绪
+Current time:Thu Jul 16 2026 21:47:27 GMT+0800 (中国标准时间)
+Automatic robot chat mode has been activated
+uncaughtException ReferenceError: WAKE_TRIGGER is not defined
+    at defaultMessage (file:///C:/Users/18034/wechat-bot/src/wechaty/sendMessage.js:42:44)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async WechatyImpl.<anonymous> (file:///C:/Users/18034/wechat-bot/src/platforms/wechat/bot.js:140:5)
+uncaughtException ReferenceError: WAKE_TRIGGER is not defined
+    at defaultMessage (file:///C:/Users/18034/wechat-bot/src/wechaty/sendMessage.js:42:44)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async WechatyImpl.<anonymous> (file:///C:/Users/18034/wechat-bot/src/platforms/wechat/bot.js:140:5)
+uncaughtException ReferenceError: WAKE_TRIGGER is not defined
+    at defaultMessage (file:///C:/Users/18034/wechat-bot/src/wechaty/sendMessage.js:42:44)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async WechatyImpl.<anonymous> (file:///C:/Users/18034/wechat-bot/src/platforms/wechat/bot.js:140:5)
+uncaughtException ReferenceError: WAKE_TRIGGER is not defined
+    at defaultMessage (file:///C:/Users/18034/wechat-bot/src/wechaty/sendMessage.js:42:44)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async WechatyImpl.<anonymous> (file:///C:/Users/18034/wechat-bot/src/platforms/wechat/bot.js:140:5)
+uncaughtException ReferenceError: WAKE_TRIGGER is not defined
+    at defaultMessage (file:///C:/Users/18034/wechat-bot/src/wechaty/sendMessage.js:42:44)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+    at async WechatyImpl.<anonymous> (file:///C:/Users/18034/wechat-bot/src/platforms/wechat/bot.js:140:5)
